@@ -5,7 +5,6 @@ import talib
 
 from aiohttp import ClientSession
 
-# another thing that could be cool is algo buying fat orderbook breaks
 
 async def make_request(session: ClientSession, url: str):
     async with session.get(url) as response:
@@ -44,13 +43,17 @@ async def get_data():
 
 
 if __name__ == '__main__':
+    # and also add condition that the volume is increasing
+    # say if this 100 candles > previous 100 candles volume profile or sth
+    # another thing that could be cool is algo buying fat orderbook breaks
+    # and the top has to be in a given distance from the current rally
+    # backtest 🥺
     out = []
     symbols, _candles = asyncio.run(get_data())
     for symbol, candles in zip(symbols, _candles):
         candles = candles.astype(np.float64)
         current_price = candles['c'].iloc[-1] 
         high = max(candles['h'])
-        # and also add condition that the volume is increasing
         atr_df = talib.ATR(candles['h'], candles['l'], candles['c'], 14)
         atr = atr_df.iloc[-1]
         if current_price > high:
