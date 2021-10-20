@@ -53,11 +53,11 @@ async def get_data():
         return (symbols, await asyncio.gather(*tasks))
 
 
-async def main():
+async def get_close_to_top():
     # this is pretty stupid, as 'close to top' assets might not be trending
     out = []
-    symbols, _candles = await get_data()
-    for symbol, candles in zip(symbols, _candles):
+    symbols, all_candles = await get_data()
+    for symbol, candles in zip(symbols, all_candles):
         candles = candles.astype(np.float64)
         current_price = candles['close'].iloc[-1] 
         high = max(candles['high'])
@@ -78,18 +78,50 @@ async def main():
                 out.append(candles)
 
 
+async def get_hot():
+    # basically if based on the 200 volume, last 5 mins volume is greater  
+    # and the one minute trades is greater than the average of the 200
+    # and the change on the one minute is positive
+    # return the asset
+    out = []
+    symbols, all_candles = await get_data()
+    for symbol, candles in zip(symbols, all_candles):
+
+        # data
+        candles['volume'] = candles['volume'].astype(np.float64)
+        mean_volume = candles['volume'].mean()
+        recent_volume = candles['volume'].iloc[-5:].mean()
+        last_candle = candles.iloc[-1]
+        last_open = float(last_candle['open'])
+        last_price = float(last_candle['close'])
+        volume_last = last_candle['volume']
+        volume_second_last = candles.iloc[-2]['volume']
+        volume_third_last = candles.iloc[-3]['volume']
+        volume_fourth_last = candles.iloc[-4]['volume']
+
+        # conditions
+        volume_is_greater = recent_volume > mean_volume * 2
+        last_candle_is_green = last_open < last_price
+        volume_is_increasing = (
+            # volume_fourth_last 
+            volume_third_last
+            < volume_second_last
+            < volume_last
+        )
+        if (
+            volume_is_greater and 
+            volume_is_increasing and 
+            last_candle_is_green
+        ):
+            print(symbol)
+            out.append(symbol)
+    return out
+
 if __name__ == '__main__':
     # TODO
-    # and also add condition that the volume is increasing
-    # say if this 100 candles > previous 100 candles volume profile or sth
-    # another thing that could be cool is algo buying fat orderbook breaks
-    # and the top has to be in a given distance from the current rally
     # backtest 🥺
-
-    async def func(symbol: str, interval: str):
-        async with ClientSession() as session:
-            candles = await get_candles(session, symbol, interval)
-        return candles
-
-    df = asyncio.run(func('BTCUSDT', '1m'))
+    import time
+    while True:
+        out = asyncio.run(get_hot())
+        time.sleep(61)
 
